@@ -8,6 +8,10 @@ GameWindow::GameWindow(QWidget *parent) :
     ui->setupUi(this);
     StartGame();
     set_window_size();
+    permanent = new QLabel("Classic", this);
+    permanent->setFrameStyle(QFrame::Sunken);
+    ui->statusbar->addPermanentWidget(permanent);
+//    ui->statusbar->showMessage(tr("临时信息!"), 2000);
 }
 
 GameWindow::~GameWindow() {
@@ -41,15 +45,35 @@ void GameWindow::mousePressEvent(QMouseEvent *event) {
         auto relative_coord = get_relative_coordinate(get_chessboard_count(), absolute_coordinate_);
         game_->round_[game_->current_round_id_]->set_activate_chessboard_index(relative_coord.first);
         game_->Click(relative_coord.second);
-        if (game_->FinishRound())
-            game_->NextRound(), update();
+        if (game_->FinishRound()) {
+            int prev_count = get_chessboard_count();
+            game_->NextRound();
+            int curr_count = get_chessboard_count();
+            if (prev_count != curr_count)
+                set_window_size();
+            ShowPermanentInfo(DropMode::CLASSIC);
+            update();
+        }
     }
 }
 
 void GameWindow::keyPressEvent(QKeyEvent *event) {}
 
+void GameWindow::ShowPermanentInfo(const DropMode &mode) {
+    if (mode == DropMode::CLASSIC)
+        permanent->setText("Classic Mode");
+    if (mode == DropMode::QUANTUM)
+        permanent->setText("Quantum Mode");
+    if (mode == DropMode::SUPERPO)
+        permanent->setText("Superposition Mode");
+}
+
+void GameWindow::ShowTemporaryInfo(const QString &info, const int &time) {
+    ui->statusbar->showMessage(info, time);
+}
+
 void GameWindow::StartGame() {
-    game_ = new Game(board_size, TakeMode::DEFAULT);
+    game_ = new Game(this, board_size, TakeMode::DEFAULT);
 }
 
 int GameWindow::get_chessboard_count() {return game_->round_[game_->current_round_id_]->chessboard_group_.size();}
@@ -76,7 +100,7 @@ std::pair<int, point> GameWindow::get_relative_coordinate(const int &display_che
 point GameWindow::get_absolute_coordinate(const int &display_chessboard_count, const int &id, const point &relative_coordinate) {
     const int count = display_chessboard_count;
     const int loc_x = id % game_size[count].board_x;
-    const int loc_y = id / game_size[count].board_y;
+    const int loc_y = id / game_size[count].board_x;
     const int board_w = game_size[count].board_w;
     const int bound_w = game_size[count].bound_w;
     const int total_w = board_w + 2 * bound_w;
@@ -90,21 +114,24 @@ void GameWindow::DrawMap(ChessBoardGroup *group) {
 
     QPen pen = painter.pen();
     pen.setColor(color_boundary);
-    pen.setWidth(5);
+    pen.setWidth(3);
     painter.setPen(pen);
     int count = group->chessboard_group_.size();
     if (mapdisplaymode_ == MapDisplayMode::GLOBAL) {
         QBrush brush;
-        brush.setColor(color_board);
-        brush.setStyle(Qt::SolidPattern);
-        painter.setBrush(brush);
         int board_w = game_size[count].board_w, bound_w = game_size[count].bound_w;
         int block_w = board_w / board_size;
         int total_w = board_w + 2 * bound_w;
         for (int i = 0; i < count; ++i) {
             int loc_x = i % game_size[count].board_x;
-            int loc_y = i / game_size[count].board_y;
+            int loc_y = i / game_size[count].board_x;
+            pen.setColor(color_boundary);
+            pen.setWidth(5);
+            painter.setPen(pen);
             point start_point = point(total_w, 0) * loc_x + point(0, total_w) * loc_y + point(bound_w, bound_w);
+            brush.setColor(color_board);
+            brush.setStyle(Qt::SolidPattern);
+            painter.setBrush(brush);
             painter.drawRect(start_point.x(), start_point.y(), board_w, board_w);
             /* draw lines */
             pen.setColor(color_black);
@@ -144,13 +171,15 @@ void GameWindow::DrawMap(ChessBoardGroup *group) {
         pen.setWidth(1);
         painter.setPen(pen);
         auto relative_coord = get_relative_coordinate(count, absolute_coordinate_);
-        point p = get_absolute_coordinate(count, relative_coord.first, relative_coord.second);
-        int half_w = block_w / 2;
-        for (int i = -half_w; i <= half_w; i += half_w * 2)
-            for (int j = -half_w; j <= half_w; j += half_w * 2) {
-                painter.drawLine(p.x() + i, p.y() + j, p.x() + i / 2, p.y() + j);
-                painter.drawLine(p.x() + i, p.y() + j, p.x() + i, p.y() + j / 2);
-            }
+        for (int k = 0; k < count; ++k) {
+            point p = get_absolute_coordinate(count, k, relative_coord.second);
+            int half_w = block_w / 2;
+            for (int i = -half_w; i <= half_w; i += half_w * 2)
+                for (int j = -half_w; j <= half_w; j += half_w * 2) {
+                    painter.drawLine(p.x() + i, p.y() + j, p.x() + i / 2, p.y() + j);
+                    painter.drawLine(p.x() + i, p.y() + j, p.x() + i, p.y() + j / 2);
+                }
+        }
     }
 }
 
@@ -171,4 +200,40 @@ void GameWindow::DrawChess(const int &display_chessboard_count, const int &id, B
     int half_w = game_size[count].board_w / 40;
     painter->drawText(QRectF(absolute_coord.x() - half_w, absolute_coord.y() - half_w, 2 * half_w, 2 * half_w),
                       Qt::AlignCenter, static_cast<QString>(*chess));
+}
+
+void GameWindow::on_actionClassic_triggered()
+{
+    game_->round_[game_->current_round_id_]->set_drop_mode(DropMode::CLASSIC);
+    ShowPermanentInfo(DropMode::CLASSIC);
+}
+
+void GameWindow::on_actionQuantum_triggered()
+{
+    if (get_chessboard_count() <= 4)
+        game_->round_[game_->current_round_id_]->set_drop_mode(DropMode::QUANTUM),
+                ShowPermanentInfo(DropMode::QUANTUM);
+    else
+        ShowTemporaryInfo("invalid operation: out of range");
+}
+
+void GameWindow::on_actionSuperposition_triggered()
+{
+    bool editable = false;
+    auto round = game_->round_[game_->current_round_id_];
+    for (auto board : round->chessboard_group_)
+        for (int i = 0; i < board_size; ++i)
+            for (int j = 0; j < board_size; ++j) {
+                auto chess = board->board_[i][j];
+                if (chess == nullptr) continue;
+                if (typeid(*chess) != typeid(QuantumChess)) continue;
+                if (chess->player() == game_->current_round_player_) continue;
+                if (!dynamic_cast<QuantumChess *>(chess)->alive()) continue;
+                editable = true;
+            }
+    if (editable)
+        game_->round_[game_->current_round_id_]->set_drop_mode(DropMode::SUPERPO),
+                ShowPermanentInfo(DropMode::SUPERPO);
+    else
+        ShowTemporaryInfo("invalid operation: no available quantum chess");
 }

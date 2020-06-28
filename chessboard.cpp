@@ -39,6 +39,7 @@ bool ChessBoard::ChessDead(const int &x, const int &y) const {
         for (int i = 0; i < 4; ++i) {
             point t = p + dir[i];
             if (OutOfRange(t.x(), t.y())) continue;
+            if (visit[t.x()][t.y()]) continue;
             visit[t.x()][t.y()] = true;
             if (board_[t.x()][t.y()] == nullptr)
                 return false;

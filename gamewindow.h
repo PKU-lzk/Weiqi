@@ -40,11 +40,11 @@ const std::vector<Size> game_size = {
     {760, 20, 800, 800, 1, 1},
     {760, 20, 1600, 800, 2, 1},
     {570, 15, 1800, 600, 3, 1},
-    {494, 13, 1040, 1040, 2, 2},
+    {456, 12, 960, 960, 2, 2},
     {-1, -1, -1, -1, -1, -1},
     {496, 13, 1560, 1040, 3, 2},
     {-1, -1, -1, -1, -1, -1},
-    {380, 10, 1600, 800, 4, 2}
+    {418, 4, 1704, 852, 4, 2}
 };
 
 /*
@@ -91,6 +91,9 @@ public:
     void mousePressEvent(QMouseEvent *event);
     void keyPressEvent(QKeyEvent *event);
 
+    void ShowPermanentInfo(const DropMode &mode);
+    void ShowTemporaryInfo(const QString &info, const int &time = 2000);
+
     void StartGame();
 	int get_chessboard_count();
 	void set_window_size();
@@ -98,8 +101,16 @@ public:
     point get_absolute_coordinate(const int &display_chessboard_count, const int &id, const point &relative_coordinate);
     void DrawMap(ChessBoardGroup *group);
     void DrawChess(const int &display_chesssboard_count, const int &id, BaseChess *chess, QPainter *painter);
+private slots:
+    void on_actionClassic_triggered();
+
+    void on_actionQuantum_triggered();
+
+    void on_actionSuperposition_triggered();
+
 private:
     Ui::GameWindow *ui;
+    QLabel *permanent;
     Game *game_;
     point absolute_coordinate_;
     MapDisplayMode mapdisplaymode_;

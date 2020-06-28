@@ -34,13 +34,14 @@ class GameWindow;
 class Game
 {
 public:
-    Game(const int &board_size, const TakeMode &takemode);
+    Game(GameWindow *parent, const int &board_size, const TakeMode &takemode);
     ~Game();
     void Click(const point &pos);
     bool FinishRound();
     void PrevRound();
     void NextRound();
 private:
+    GameWindow *parent_;
     const int board_size_;
     TakeMode takemode_;
     int current_round_id_;

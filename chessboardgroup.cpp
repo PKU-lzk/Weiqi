@@ -21,7 +21,8 @@ ChessBoardGroup::ChessBoardGroup(ChessBoardGroup const *previous_group, const Ta
         current_player_ = Player::WHITE;
     GroupGenerate(previous_group, takemode);
     activate_chessboard_index_ = 0;
-    drop_mode_ = previous_group->drop_mode_;
+//    drop_mode_ = previous_group->drop_mode_;
+    drop_mode_ = DropMode::CLASSIC;
     last_entangled_chess_ = nullptr;
     superpo_ratio_ = previous_group->superpo_ratio_;
 }

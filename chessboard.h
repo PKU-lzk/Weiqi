@@ -23,6 +23,7 @@
  */
 
 class ChessBoardGroup;
+class Game;
 class GameWindow;
 
 class ChessBoard {
@@ -37,6 +38,7 @@ private:
     int board_weight_;
     std::vector<std::vector<BaseChess *>> board_;
     friend class ChessBoardGroup;
+    friend class Game;
     friend class GameWindow;
 };
 

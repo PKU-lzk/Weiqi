@@ -21,10 +21,40 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuSettings">
+    <property name="title">
+     <string>Settings</string>
+    </property>
+    <widget class="QMenu" name="menuChange_Drop_Mode">
+     <property name="title">
+      <string>Change Drop Mode</string>
+     </property>
+     <addaction name="actionClassic"/>
+     <addaction name="actionQuantum"/>
+     <addaction name="actionSuperposition"/>
+    </widget>
+    <addaction name="menuChange_Drop_Mode"/>
+   </widget>
+   <addaction name="menuSettings"/>
   </widget>
+  <action name="actionClassic">
+   <property name="text">
+    <string>Classic</string>
+   </property>
+  </action>
+  <action name="actionQuantum">
+   <property name="text">
+    <string>Quantum</string>
+   </property>
+  </action>
+  <action name="actionSuperposition">
+   <property name="text">
+    <string>Superposition</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

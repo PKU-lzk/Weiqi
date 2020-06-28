@@ -1,7 +1,7 @@
 #include "game.h"
 
-Game::Game(const int &board_size, const TakeMode &takemode)
-    : board_size_(board_size), takemode_(takemode) {
+Game::Game(GameWindow *parent, const int &board_size, const TakeMode &takemode)
+    : parent_(parent), board_size_(board_size), takemode_(takemode) {
     current_round_id_ = 0;
     current_round_player_ = Player::BLACK;
     round_.push_back(new ChessBoardGroup(board_size_));
@@ -48,6 +48,10 @@ void Game::Click(const point &pos) {
             chessgroup_.push_back(chess);
             round->DropChess(chess);
             return;
+        } else if (round->ValidChoose(pos)) {
+            auto board = round->chessboard_group_[round->activate_chessboard_index_];
+            auto chess = board->board_[pos.x()][pos.y()];
+            round->last_entangled_chess_ = dynamic_cast<QuantumChess *>(chess);
         }
     }
     qInfo("unknown error");
