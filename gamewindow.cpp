@@ -240,7 +240,7 @@ void GameWindow::on_actionSuperposition_triggered()
 
 void GameWindow::on_actionwithdraw_triggered()
 {
-    if (game_->round_.empty())
+    if (game_->round_.size() == 1)
         return;
     ShowTemporaryInfo("Withdraw");
     game_->PrevRound();
