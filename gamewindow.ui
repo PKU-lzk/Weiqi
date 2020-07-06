@@ -37,6 +37,7 @@
      <addaction name="actionSuperposition"/>
     </widget>
     <addaction name="menuChange_Drop_Mode"/>
+    <addaction name="actionwithdraw"/>
    </widget>
    <addaction name="menuSettings"/>
   </widget>
@@ -53,6 +54,11 @@
   <action name="actionSuperposition">
    <property name="text">
     <string>Superposition</string>
+   </property>
+  </action>
+  <action name="actionwithdraw">
+   <property name="text">
+    <string>withdraw</string>
    </property>
   </action>
  </widget>

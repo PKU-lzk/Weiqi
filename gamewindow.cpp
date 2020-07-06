@@ -237,3 +237,14 @@ void GameWindow::on_actionSuperposition_triggered()
     else
         ShowTemporaryInfo("invalid operation: no available quantum chess");
 }
+
+void GameWindow::on_actionwithdraw_triggered()
+{
+    if (game_->round_.empty())
+        return;
+    ShowTemporaryInfo("Withdraw");
+    game_->PrevRound();
+    set_window_size();
+    ShowPermanentInfo(game_->round_[game_->current_round_id_]->drop_mode_);
+    update();
+}

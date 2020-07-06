@@ -108,6 +108,8 @@ private slots:
 
     void on_actionSuperposition_triggered();
 
+    void on_actionwithdraw_triggered();
+
 private:
     Ui::GameWindow *ui;
     QLabel *permanent;
