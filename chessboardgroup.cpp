@@ -260,6 +260,26 @@ void ChessBoardGroup::GroupGenerate(const ChessBoardGroup *previous_group, const
                                 board->board_[pos.x()][pos.y()] = nullptr;
             }
         }
+		return;
     }
+	if (takemode == TakeMode::TAKEALL) {
+		std::set<int> dead_chess_id;
+		for (auto board : chessboard_group_) {
+			const int &size = board_size_;
+			for (int i = 0; i < size; ++i)
+				for (int j = 0; j < size; ++j)
+					if (board->ChessDead(i, j))
+                        dead_chess_id.insert(board->board_[i][j]->id());
+		}
+		for (auto &board : chessboard_group_) {
+			const int &size = board_size_;
+			for (int i = 0; i < size; ++i)
+				for (int j = 0; j < size; ++j)
+                    if (board->board_[i][j] != nullptr)
+                        if (dead_chess_id.find(board->board_[i][j]->id()) != dead_chess_id.end())
+                            board->board_[i][j] = nullptr;
+		}
+		return;
+	}
 }
 

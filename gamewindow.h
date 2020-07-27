@@ -110,6 +110,8 @@ private slots:
 
     void on_actionwithdraw_triggered();
 
+    void on_actionDefault_triggered();
+
 private:
     Ui::GameWindow *ui;
     QLabel *permanent;

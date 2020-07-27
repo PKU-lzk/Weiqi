@@ -1,6 +1,7 @@
 #ifndef CHESSBOARDGROUP_H
 #define CHESSBOARDGROUP_H
 #include "chessboard.h"
+#include <set>
 
 /*
  * ChessBoardGroup class:
@@ -55,7 +56,7 @@
  */
 
 enum DropMode {CLASSIC, QUANTUM, SUPERPO};
-enum TakeMode {NONE, NORMAL, DEFAULT};
+enum TakeMode {NONE, NORMAL, DEFAULT, TAKEALL};
 
 class Game;
 class GameWindow;

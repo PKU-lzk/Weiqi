@@ -21,7 +21,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuSettings">
@@ -30,11 +30,17 @@
     </property>
     <widget class="QMenu" name="menuChange_Drop_Mode">
      <property name="title">
-      <string>Change Drop Mode</string>
+      <string>Change Mode</string>
      </property>
+     <addaction name="actionDrop"/>
      <addaction name="actionClassic"/>
      <addaction name="actionQuantum"/>
      <addaction name="actionSuperposition"/>
+     <addaction name="separator"/>
+     <addaction name="separator"/>
+     <addaction name="separator"/>
+     <addaction name="actionTake"/>
+     <addaction name="actionDefault"/>
     </widget>
     <addaction name="menuChange_Drop_Mode"/>
     <addaction name="actionwithdraw"/>
@@ -59,6 +65,21 @@
   <action name="actionwithdraw">
    <property name="text">
     <string>withdraw</string>
+   </property>
+  </action>
+  <action name="actionDrop">
+   <property name="text">
+    <string>Drop</string>
+   </property>
+  </action>
+  <action name="actionTake">
+   <property name="text">
+    <string>Take</string>
+   </property>
+  </action>
+  <action name="actionDefault">
+   <property name="text">
+    <string>Default</string>
    </property>
   </action>
  </widget>

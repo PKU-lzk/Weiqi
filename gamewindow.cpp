@@ -35,8 +35,8 @@ void GameWindow::mouseMoveEvent(QMouseEvent *event) {
     auto relative_coord = get_relative_coordinate(get_chessboard_count(), absolute_coordinate_);
     if (relative_coord.first < 0 || relative_coord.first >= get_chessboard_count())
         return;
-    if (relative_coord.second.x() >= board_size || relative_coord.second.y() >= board_size)
-        return;
+//    if (relative_coord.second.x() >= board_size || relative_coord.second.y() >= board_size)
+//        return;
     update();
 }
 
@@ -73,7 +73,7 @@ void GameWindow::ShowTemporaryInfo(const QString &info, const int &time) {
 }
 
 void GameWindow::StartGame() {
-    game_ = new Game(this, board_size, TakeMode::DEFAULT);
+    game_ = new Game(this, board_size, TakeMode::TAKEALL);
 }
 
 int GameWindow::get_chessboard_count() {return game_->round_[game_->current_round_id_]->chessboard_group_.size();}
@@ -247,4 +247,9 @@ void GameWindow::on_actionwithdraw_triggered()
     set_window_size();
     ShowPermanentInfo(game_->round_[game_->current_round_id_]->drop_mode_);
     update();
+}
+
+void GameWindow::on_actionDefault_triggered()
+{
+    game_->takemode_ = TakeMode::TAKEALL;
 }
