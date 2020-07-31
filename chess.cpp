@@ -14,8 +14,8 @@ Player BaseChess::player() const {return player_;}
 int BaseChess::chess_weight() const {return chess_weight_;}
 
 BaseChess::operator QString() const {
-    ;
     QString res(std::to_string(id_).data());
+    return res;
     if (typeid(*this) == typeid(ClassicChess)) return res + 'C';
     if (typeid(*this) == typeid(QuantumChess)) return res + 'Q';
     if (typeid(*this) == typeid(SuperpoChess)) return res + 'S';

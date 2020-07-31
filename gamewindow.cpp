@@ -3,7 +3,7 @@
 
 GameWindow::GameWindow(QWidget *parent) :
     QMainWindow(parent), ui(new Ui::GameWindow),
-    absolute_coordinate_(-1, -1), mapdisplaymode_(MapDisplayMode::GLOBAL), window_size_(-1, -1)
+    absolute_coordinate_(-1, -1), mapdisplaymode_(default_display_mode), window_size_(-1, -1)
 {
     ui->setupUi(this);
     StartGame();
@@ -43,8 +43,14 @@ void GameWindow::mouseMoveEvent(QMouseEvent *event) {
 void GameWindow::mousePressEvent(QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         auto relative_coord = get_relative_coordinate(get_chessboard_count(), absolute_coordinate_);
+        if (mapdisplaymode_ == MapDisplayMode::ONEBOARD)
+            relative_coord = get_relative_coordinate(1, absolute_coordinate_);
         game_->round_[game_->current_round_id_]->set_activate_chessboard_index(relative_coord.first);
-        game_->Click(relative_coord.second);
+        auto pos = relative_coord.second;
+        if (pos.x() == 19 || pos.y() == 19)
+            SwitchDisplayMode();
+        else
+            game_->Click(pos);
         if (game_->FinishRound()) {
             int prev_count = get_chessboard_count();
             game_->NextRound();
@@ -74,6 +80,15 @@ void GameWindow::ShowTemporaryInfo(const QString &info, const int &time) {
 
 void GameWindow::StartGame() {
     game_ = new Game(this, board_size, TakeMode::TAKEALL);
+}
+
+void GameWindow::SwitchDisplayMode() {
+    if (mapdisplaymode_ == MapDisplayMode::GLOBAL)
+        mapdisplaymode_ = MapDisplayMode::ONEBOARD;
+    else if (mapdisplaymode_ == MapDisplayMode::ONEBOARD)
+        mapdisplaymode_ = MapDisplayMode::GLOBAL;
+    set_window_size();
+    update();
 }
 
 int GameWindow::get_chessboard_count() {return game_->round_[game_->current_round_id_]->chessboard_group_.size();}
@@ -165,6 +180,14 @@ void GameWindow::DrawMap(ChessBoardGroup *group) {
             auto dropped = game_->round_[game_->current_round_id_]->dropped_chess_group_;
             for (auto chess : dropped)
                 if (chessboard->ChessMatch(chess)) DrawChess(count, i, chess, &painter);
+            QFont font;
+            font.setPixelSize(game_size[count].board_w / 50);
+            int half_w = game_size[count].board_w / 40;
+            auto absolute_coord = get_absolute_coordinate(count, i, point(18, 18)) + point(block_w / 2, block_w / 2);
+            painter.setPen(color_black);
+            painter.drawText(QRectF(absolute_coord.x() - half_w, absolute_coord.y() - half_w, 2 * half_w, 2 * half_w),
+                              Qt::AlignCenter, static_cast<QString>(point(chessboard->board_weight_, group->group_weight_).strip())
+                             );
         }
         /* draw red rectangle */
         pen.setColor(color_red);
@@ -180,6 +203,64 @@ void GameWindow::DrawMap(ChessBoardGroup *group) {
                     painter.drawLine(p.x() + i, p.y() + j, p.x() + i, p.y() + j / 2);
                 }
         }
+    }
+    if (mapdisplaymode_ == MapDisplayMode::ONEBOARD) {
+        QBrush brush;
+        int board_w = game_size[1].board_w, bound_w = game_size[1].bound_w;
+        int block_w = board_w / board_size;
+        int total_w = board_w + 2 * bound_w;
+        pen.setColor(color_boundary);
+        pen.setWidth(5);
+        painter.setPen(pen);
+        brush.setColor(color_board);
+        brush.setStyle(Qt::SolidPattern);
+        painter.setBrush(brush);
+        painter.drawRect(bound_w, bound_w, board_w, board_w);
+        /* draw lines */
+        pen.setColor(color_black);
+        pen.setWidth(1);
+        painter.setPen(pen);
+        for (int j = 0; j < board_size; ++j) {
+            point p1 = get_absolute_coordinate(1, 0, {0, j});
+            point p2 = get_absolute_coordinate(1, 0, {board_size - 1, j});
+            point q1 = get_absolute_coordinate(1, 0, {j, 0});
+            point q2 = get_absolute_coordinate(1, 0, {j, board_size - 1});
+            painter.drawLine(p1.x(), p1.y(), p2.x(), p2.y());
+            painter.drawLine(q1.x(), q1.y(), q2.x(), q2.y());
+        }
+        /* draw black points */
+        brush.setColor(color_black);
+        painter.setBrush(brush);
+        std::vector<point> black_points = {point(3, 3), point(9, 9), point(3, 15), point(15, 3), point(15, 15)};
+        for (point b : black_points) {
+            point p = get_absolute_coordinate(1, 0, b);
+            int half_w = block_w / 8;
+            painter.drawRect(p.x() - half_w, p.y() - half_w, half_w * 2, half_w * 2);
+        }
+        /* draw chess */
+        auto index = game_->round_[game_->current_round_id_]->activate_chessboard_index_;
+        auto chessboard = game_->round_[game_->current_round_id_]->chessboard_group_[index];
+        for (int j = 0; j < board_size; ++j)
+            for (int k = 0; k < board_size; ++k) {
+                auto chess = chessboard->board_[j][k];
+                if (chess != nullptr)
+                    DrawChess(1, 0, chess, &painter);
+            }
+        auto dropped = game_->round_[game_->current_round_id_]->dropped_chess_group_;
+        for (auto chess : dropped)
+            if (chessboard->ChessMatch(chess)) DrawChess(1, 0, chess, &painter);
+        /* draw red rectangle */
+        pen.setColor(color_red);
+        pen.setWidth(1);
+        painter.setPen(pen);
+        auto relative_coord = get_relative_coordinate(1, absolute_coordinate_);
+        point p = get_absolute_coordinate(1, 0, relative_coord.second);
+        int half_w = block_w / 2;
+        for (int i = -half_w; i <= half_w; i += half_w * 2)
+            for (int j = -half_w; j <= half_w; j += half_w * 2) {
+                painter.drawLine(p.x() + i, p.y() + j, p.x() + i / 2, p.y() + j);
+                painter.drawLine(p.x() + i, p.y() + j, p.x() + i, p.y() + j / 2);
+             }
     }
 }
 
@@ -253,3 +334,25 @@ void GameWindow::on_actionDefault_triggered()
 {
     game_->takemode_ = TakeMode::TAKEALL;
 }
+
+void GameWindow::on_actionMode_2_triggered()
+{
+    game_->takemode_ = TakeMode::DEFAULT;
+}
+
+void GameWindow::on_action1_1_triggered()
+{
+    game_->round_[game_->current_round_id_]->set_superpo_ratio(std::make_pair(1, 1));
+}
+
+void GameWindow::on_action1_2_triggered()
+{
+    game_->round_[game_->current_round_id_]->set_superpo_ratio(std::make_pair(1, 2));
+}
+
+void GameWindow::on_action2_2_triggered()
+{
+    game_->round_[game_->current_round_id_]->set_superpo_ratio(std::make_pair(2, 2));
+}
+
+

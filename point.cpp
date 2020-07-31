@@ -25,3 +25,14 @@ point point::operator*(const int &n) const {return point(x_ * n, y_ * n); }
 point point::operator%(const int &n) const {return point(x_ % n, y_ % n); }
 
 point point::operator/(const int &n) const {return point(x_ / n, y_ / n); }
+
+point point::strip() const {
+    std::function<int(int, int)> gcd = [&](int x, int y) {return y ? gcd(y, x % y) : x;};
+    int t = gcd(x_, y_);
+    if (t)
+        return point(x_ / t, y_ / t);
+    else
+        return *this;
+}
+
+point::operator QString() const {return QString(std::to_string(x_).data()) + '/' + std::to_string(y_).data(); }

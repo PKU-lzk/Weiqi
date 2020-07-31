@@ -1,5 +1,7 @@
 #ifndef POINT_H
 #define POINT_H
+#include <QString>
+#include <string>
 #include <cmath>
 /*
  * point class:
@@ -25,6 +27,8 @@ public:
     point operator*(const int &n) const;
     point operator%(const int &n) const;
     point operator/(const int &n) const;
+    point strip() const;
+    explicit operator QString() const;
 };
 
 #endif // POINT_H

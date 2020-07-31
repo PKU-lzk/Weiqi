@@ -2,8 +2,6 @@
 #define CHESS_H
 #include "point.h"
 #include "player.h"
-#include <QString>
-#include <string>
 
 /*
  * BaseChess class:

@@ -77,11 +77,13 @@ public:
     void ChooseChess(const point &pos);
     void DropChess(BaseChess *chess);
 private:
+    void Relax();
     void GroupGenerate(ChessBoardGroup const *previous_group, const TakeMode &takemode);
     const int board_size_;
     Player current_player_;
     std::vector<ChessBoard *> chessboard_group_;
     int activate_chessboard_index_;
+    int group_weight_;
     DropMode drop_mode_;
     QuantumChess *last_entangled_chess_;
     std::vector<BaseChess *> dropped_chess_group_;

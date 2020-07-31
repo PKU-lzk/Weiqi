@@ -95,6 +95,7 @@ public:
     void ShowTemporaryInfo(const QString &info, const int &time = 2000);
 
     void StartGame();
+    void SwitchDisplayMode();
 	int get_chessboard_count();
 	void set_window_size();
     std::pair<int, point> get_relative_coordinate(const int &display_chessboard_count, const point &absolute_coordinate);
@@ -111,6 +112,14 @@ private slots:
     void on_actionwithdraw_triggered();
 
     void on_actionDefault_triggered();
+
+    void on_action1_1_triggered();
+
+    void on_action1_2_triggered();
+
+    void on_action2_2_triggered();
+
+    void on_actionMode_2_triggered();
 
 private:
     Ui::GameWindow *ui;

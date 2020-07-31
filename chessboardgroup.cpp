@@ -11,6 +11,7 @@ ChessBoardGroup::ChessBoardGroup(const int &board_size, bool reverse)
     drop_mode_ = DropMode::CLASSIC;
     last_entangled_chess_ = nullptr;
     superpo_ratio_ = {1, 1};
+    group_weight_ = 1;
 }
 
 ChessBoardGroup::ChessBoardGroup(ChessBoardGroup const *previous_group, const TakeMode &takemode)
@@ -20,6 +21,7 @@ ChessBoardGroup::ChessBoardGroup(ChessBoardGroup const *previous_group, const Ta
     else
         current_player_ = Player::WHITE;
     GroupGenerate(previous_group, takemode);
+    Relax();
     activate_chessboard_index_ = 0;
 //    drop_mode_ = previous_group->drop_mode_;
     drop_mode_ = DropMode::CLASSIC;
@@ -142,9 +144,52 @@ void ChessBoardGroup::DropChess(BaseChess *chess) {
     }
 }
 
+//point ChessBoardGroup::BoardWeight(const int &board_index) {
+//    int m = chessboard_group_[board_index]->board_weight_;
+//    int n = 0;
+//    for (auto & board : chessboard_group_)
+//        n += board->board_weight_;
+//    std::function<int(const int &, const int &)> gcd = [&](const int &x, const int &y) { return y ? gcd(y, x % y) : 0; };
+//    int t = gcd(m, n);
+//    return point(m / t, n / t);
+//}
+
 /*
  * only called when construct the object
  */
+
+void ChessBoardGroup::Relax() {
+    const int &size = this->board_size_;
+    std::vector<ChessBoard *> new_chessboard_group;
+    for (auto board : chessboard_group_) {
+        bool exists = false;
+        for (auto new_board : new_chessboard_group) {
+            bool same = true;
+            for (int i = 0; i < size; ++i)
+                for (int j = 0; j < size; ++j)
+                    if (board->board_[i][j] != new_board->board_[i][j])
+                        same = false;
+            if (same) {
+                exists = true;
+                new_board->board_weight_ += board->board_weight_;
+            }
+        }
+        if (!exists)
+            new_chessboard_group.push_back(board);
+    }
+    swap(new_chessboard_group, chessboard_group_);
+    /* get gcd of all board_weight_ */
+//    int tag = 0;
+//    for (auto board : chessboard_group_)
+//        tag |= board->board_weight_;
+//    tag = tag & -tag;
+//    group_weight_ = 0;
+//    for (auto board : chessboard_group_)
+//        group_weight_ += (board->board_weight_ /= tag);
+    group_weight_ = 0;
+    for (auto board : chessboard_group_)
+        group_weight_ += board->board_weight_;
+}
 
 void ChessBoardGroup::GroupGenerate(const ChessBoardGroup *previous_group, const TakeMode &takemode) {
     // generate group without take any chess
@@ -268,7 +313,7 @@ void ChessBoardGroup::GroupGenerate(const ChessBoardGroup *previous_group, const
 			const int &size = board_size_;
 			for (int i = 0; i < size; ++i)
 				for (int j = 0; j < size; ++j)
-					if (board->ChessDead(i, j))
+                    if (board->ChessDead(i, j) && board->board_[i][j]->player() == current_player_)
                         dead_chess_id.insert(board->board_[i][j]->id());
 		}
 		for (auto &board : chessboard_group_) {
@@ -279,6 +324,22 @@ void ChessBoardGroup::GroupGenerate(const ChessBoardGroup *previous_group, const
                         if (dead_chess_id.find(board->board_[i][j]->id()) != dead_chess_id.end())
                             board->board_[i][j] = nullptr;
 		}
+        dead_chess_id.clear();
+        for (auto board : chessboard_group_) {
+            const int &size = board_size_;
+            for (int i = 0; i < size; ++i)
+                for (int j = 0; j < size; ++j)
+                    if (board->ChessDead(i, j) && board->board_[i][j]->player() != current_player_)
+                        dead_chess_id.insert(board->board_[i][j]->id());
+        }
+        for (auto &board : chessboard_group_) {
+            const int &size = board_size_;
+            for (int i = 0; i < size; ++i)
+                for (int j = 0; j < size; ++j)
+                    if (board->board_[i][j] != nullptr)
+                        if (dead_chess_id.find(board->board_[i][j]->id()) != dead_chess_id.end())
+                            board->board_[i][j] = nullptr;
+        }
 		return;
 	}
 }
