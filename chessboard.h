@@ -27,16 +27,16 @@ class Game;
 class GameWindow;
 
 class ChessBoard {
-public:
-    ChessBoard(const int &board_size, const int &board_weight);
-    ~ChessBoard();
-    bool ChessDead(const int &x, const int &y) const;
-    bool ChessDead(const point &pos) const;
-    bool ChessMatch(const BaseChess *chess) const;
 private:
     const int board_size_;
-    int board_weight_;
-    std::vector<std::vector<BaseChess *>> board_;
+    frac board_weight_;
+    std::vector<std::vector<Chess *>> board_;
+public:
+    ChessBoard(const int &board_size, const frac &board_weight);
+    ~ChessBoard();
+    bool Captured(const int &x, const int &y) const;
+    bool Captured(const coordinate &pos) const;
+    bool Possess(const Chess &chess) const;
     friend class ChessBoardGroup;
     friend class Game;
     friend class GameWindow;

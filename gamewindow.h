@@ -39,12 +39,12 @@ const std::vector<Size> game_size = {
     {-1, -1, -1, -1, -1, -1},
     {760, 20, 800, 800, 1, 1},
     {760, 20, 1600, 800, 2, 1},
-    {570, 15, 1800, 600, 3, 1},
+    {456, 12, 1440, 480, 3, 1},
     {456, 12, 960, 960, 2, 2},
-    {496, 13, 1560, 1040, 3, 2},
-    {496, 13, 1560, 1040, 3, 2},
-    {418, 4, 1704, 852, 4, 2},
-    {418, 4, 1704, 852, 4, 2}
+    {456, 12, 1440, 960, 3, 2},
+    {456, 12, 1440, 960, 3, 2},
+    {380, 10, 1600, 800, 4, 2},
+    {380, 10, 1600, 800, 4, 2}
 };
 
 /*
@@ -98,36 +98,24 @@ public:
     void SwitchDisplayMode();
 	int get_chessboard_count();
 	void set_window_size();
-    std::pair<int, point> get_relative_coordinate(const int &display_chessboard_count, const point &absolute_coordinate);
-    point get_absolute_coordinate(const int &display_chessboard_count, const int &id, const point &relative_coordinate);
+    std::pair<int, coordinate> get_relative_coordinate(const int &display_chessboard_count, const coordinate &absolute_coordinate);
+    coordinate get_absolute_coordinate(const int &display_chessboard_count, const int &id, const coordinate &relative_coordinate);
     void DrawMap(ChessBoardGroup *group);
-    void DrawChess(const int &display_chesssboard_count, const int &id, BaseChess *chess, QPainter *painter);
+    void DrawChess(const int &display_chesssboard_count, const int &id, const ChessWithPos &chess_with_pos, QPainter *painter);
 private slots:
-    void on_actionClassic_triggered();
-
-    void on_actionQuantum_triggered();
-
-    void on_actionSuperposition_triggered();
-
     void on_actionwithdraw_triggered();
 
-    void on_actionDefault_triggered();
-
-    void on_action1_1_triggered();
-
-    void on_action1_2_triggered();
-
-    void on_action2_2_triggered();
-
-    void on_actionMode_2_triggered();
+    void on_actiongamewise_on_triggered();
 
 private:
     Ui::GameWindow *ui;
     QLabel *permanent;
     Game *game_;
-    point absolute_coordinate_;
+    coordinate absolute_coordinate_;
     MapDisplayMode mapdisplaymode_;
-    point window_size_;
+    coordinate window_size_;
+
+
 };
 
 #endif // GAMEWINDOW_H

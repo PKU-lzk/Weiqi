@@ -1,109 +1,176 @@
 #include "chessboardgroup.h"
 
 ChessBoardGroup::ChessBoardGroup(const int &board_size, bool reverse)
-    : board_size_(board_size) {
-    if (reverse)
-        current_player_ = WHITE;
-    else
-        current_player_ = BLACK;
+    : board_size_(board_size), current_player_(static_cast<Player>(reverse ^ 1)),
+      activate_chessboard_index_(0), drop_mode_(DropMode::UNDEFINED), board_gen(1), double_in_gamewise(0)
+{
     chessboard_group_.push_back(new ChessBoard(board_size_, 1));
-    activate_chessboard_index_ = 0;
-    drop_mode_ = DropMode::CLASSIC;
-    last_entangled_chess_ = nullptr;
-    superpo_ratio_ = {1, 1};
-    group_weight_ = 1;
+    new_chess = new Chess(1, false, current_player_);
 }
 
-ChessBoardGroup::ChessBoardGroup(ChessBoardGroup const *previous_group, const TakeMode &takemode)
-    : board_size_(previous_group->board_size_) {
-    if (previous_group->current_player_ == Player::WHITE)
-        current_player_ = Player::BLACK;
-    else
-        current_player_ = Player::WHITE;
+ChessBoardGroup::ChessBoardGroup(const ChessBoardGroup &previous_group, const TakeMode &takemode)
+    : board_size_(previous_group.board_size_), current_player_(static_cast<Player>(previous_group.current_player_ ^ 1)),
+      activate_chessboard_index_(0),
+      drop_mode_(previous_group.drop_mode_ == DropMode::GAMEWISE ? DropMode::GAMEWISE : DropMode::UNDEFINED), double_in_gamewise(0)
+{
+    new_chess = new Chess(previous_group.new_chess->id() + 1, false, current_player_);
     GroupGenerate(previous_group, takemode);
     Relax();
-    activate_chessboard_index_ = 0;
-//    drop_mode_ = previous_group->drop_mode_;
-    drop_mode_ = DropMode::CLASSIC;
-    last_entangled_chess_ = nullptr;
-    superpo_ratio_ = previous_group->superpo_ratio_;
+    board_gen = chessboard_group_.size();
 }
 
 ChessBoardGroup::~ChessBoardGroup() {
     chessboard_group_.clear();
     dropped_chess_group_.clear();
+    delete new_chess;
 }
 
-bool ChessBoardGroup::ValidChoose(const point &pos) const {
+void ChessBoardGroup::LPress(const coordinate &pos) {
+    bool exists = false; // not gamewise
+    int binary = (1 << chessboard_group_.size()) - 1;
+    for (auto board : chessboard_group_)
+        if (board->board_[pos.x()][pos.y()] != nullptr) exists = true;
     auto chess = chessboard_group_[activate_chessboard_index_]->board_[pos.x()][pos.y()];
-    if (chess == nullptr) {
-        qInfo("invalid position: empty");
-        return false;
-    }
-    if (typeid(*chess) != typeid(QuantumChess)) {
-        qInfo("invalid position: not quantum chess");
-        return false;
-    }
-    if (typeid(*chess) == typeid(QuantumChess)) {
-        if (dropped_chess_group_.empty()) {
-            if (last_entangled_chess_ == nullptr)
-                qInfo("select successful");
-            else
-                qInfo("revise successful");
-            return true;
-        } else {
-            qInfo("invalid position: a quantum chess has been chosen");
-            return false;
-        }
-    }
-    qInfo("unknown error");
-    return false;
-}
-
-bool ChessBoardGroup::ValidDrop(const point &pos) const {
     if (drop_mode_ == DropMode::CLASSIC) {
-        for (auto board : chessboard_group_)
-            if (board->board_[pos.x()][pos.y()] != nullptr) {
-                qInfo("invalid position: a chess has already been set");
-                return false;
-            }
-        return true;
-    }
-    if (drop_mode_ == DropMode::QUANTUM) {
-        for (auto board : chessboard_group_)
-            if (board->board_[pos.x()][pos.y()] != nullptr) {
-                qInfo("invalid position: a chess has already been set");
-                return false;
-            }
-        for (auto prev_chess : dropped_chess_group_)
-            if (prev_chess->pos() == pos) {
-                qInfo("invalid position: a chess has already been set");
-                return false;
-            }
-        return true;
+        // empty
+        return;
     }
     if (drop_mode_ == DropMode::SUPERPO) {
-        auto parent = last_entangled_chess_;
-        if (last_entangled_chess_ == nullptr) {
-            qInfo("entangled chess not set yet");
-            return false;
+        // do something
+        if (!exists) {
+            bool remove = false;
+            for (auto dropped : dropped_chess_group_)
+                if (((dropped.first >> activate_chessboard_index_) & 1) && dropped.second.pos_ == pos)
+                {
+                    remove = true;
+                    reset();
+                    break;
+                }
+            if (!remove) dropped_chess_group_.insert(std::make_pair(binary, ChessWithPos(new_chess, pos)));
         }
-        for (auto board : chessboard_group_)
-            if (board->board_[parent->pos().x()][parent->pos().y()] == parent && board->board_[pos.x()][pos.y()] != nullptr) {
-                qInfo("a chess has already been set");
-                return false;
-            }
-        for (auto prev_chess : dropped_chess_group_) {
-            auto super_chess = dynamic_cast<SuperpoChess *>(prev_chess);
-            if (super_chess->parent() == parent && super_chess->pos() == pos) {
-                qInfo("a chess has already been set");
-                return false;
-            }
-        }
-        return true;
+        return;
     }
-    qInfo("unknown error");
-    return false;
+    if (drop_mode_ == DropMode::ENTANGLE) {
+        // do something
+        if (exists) {
+            auto backup = last_entangled_chess_.chess_;
+            if (last_entangled_chess_.chess_ != nullptr)
+                reset();
+            if (chess != nullptr && chess->entangleable() && chess != backup) {
+                drop_mode_ = DropMode::ENTANGLE;
+                last_entangled_chess_ = {chess, pos};
+            }
+        } else {
+            if (last_entangled_chess_.chess_ != nullptr) {
+                int cnt = chessboard_group_.size();
+                int tag = 0;
+                auto p = last_entangled_chess_.pos_;
+                for (int i = 0; i < cnt; ++i)
+                    if (chessboard_group_[i]->board_[p.x()][p.y()] == last_entangled_chess_.chess_)
+                        tag |= (1 << i);
+                dropped_chess_group_.insert(std::make_pair(tag, ChessWithPos(new_chess, pos)));
+                for (int i = 0; i < cnt; ++i)
+                    if (!(tag & (1 << i))) {
+                        auto size = board_size_;
+                        for (int j = 0; j < size; ++j)
+                            for (int k = 0; k < size; ++k)
+                                if (chessboard_group_[i]->board_[j][k] == last_entangled_chess_.chess_)
+                                    last_entangled_chess_.pos_ = {j, k};
+                    }
+            }
+        }
+        return;
+    }
+    if (drop_mode_ == DropMode::GAMEWISE) {
+        // do something
+        if (!chess) {
+            bool remove = false;
+            int dropped_cnt = 0;
+            for (auto dropped : dropped_chess_group_)
+                if (dropped.first == (1 << activate_chessboard_index_))
+                    ++dropped_cnt, remove |= (pos == dropped.second.pos_);
+            int tmp = (double_in_gamewise >> activate_chessboard_index_) & 1;
+            qDebug() << "dropped_cnt" << dropped_cnt;
+            qDebug() << "double_in_gamewise >> activate_chessboard_index_) & 1:" << tmp;
+            if (remove) {
+                if (dropped_cnt == 1 && ((double_in_gamewise >> activate_chessboard_index_) & 1))
+                    --board_gen, double_in_gamewise &= ~(1 << activate_chessboard_index_);
+                dropped_chess_group_.erase(std::make_pair(1 << activate_chessboard_index_, ChessWithPos(new_chess, pos)));
+            }
+            else if (dropped_cnt == ((double_in_gamewise >> activate_chessboard_index_) & 1))
+                dropped_chess_group_.insert(std::make_pair(1 << activate_chessboard_index_, ChessWithPos(new_chess, pos)));
+        }
+        return;
+    }
+    if (drop_mode_ == DropMode::UNDEFINED) {
+        // do something
+        if (chess && chess->entangleable() && chess->player() != current_player_) {
+            drop_mode_ = DropMode::ENTANGLE;
+            last_entangled_chess_ = {chess, pos};
+        } else if (!exists) {
+            drop_mode_ = DropMode::CLASSIC;
+            dropped_chess_group_.insert(std::make_pair(binary, ChessWithPos(new_chess, pos)));
+        }
+        return;
+    }
+}
+
+void ChessBoardGroup::RPress(const coordinate &pos) {
+    bool exists = false; // not gamewise
+    int binary = (1 << chessboard_group_.size()) - 1;
+    for (auto board : chessboard_group_)
+        if (board->board_[pos.x()][pos.y()] != nullptr) exists = true;
+    auto chess = chessboard_group_[activate_chessboard_index_]->board_[pos.x()][pos.y()];
+    if (drop_mode_ == DropMode::CLASSIC) {
+        // empty
+        return;
+    }
+    if (drop_mode_ == DropMode::SUPERPO) {
+        // empty
+        return;
+    }
+    if (drop_mode_ == DropMode::ENTANGLE) {
+        // do something
+        if (!exists) {
+            for (auto dropped : dropped_chess_group_)
+                if (dropped.first & (1 << activate_chessboard_index_))
+                    return;
+            int cnt = chessboard_group_.size();
+            int tag = 0, tot = 0;
+            auto p = last_entangled_chess_.pos_;
+            for (int i = 0; i < cnt; ++i)
+                if (chessboard_group_[i]->board_[p.x()][p.y()] == last_entangled_chess_.chess_)
+                    tag |= (1 << i), ++tot;
+            if (board_gen + tot <= 8) {
+                board_gen += tot;
+                dropped_chess_group_.insert(std::make_pair(tag, ChessWithPos(new_chess, pos)));
+            }
+        }
+        return;
+    }
+    if (drop_mode_ == DropMode::GAMEWISE) {
+        // do something
+        if (chess == nullptr) {
+            for (auto dropped : dropped_chess_group_)
+                if (dropped.first == (1 << activate_chessboard_index_))
+                    return;
+            if (board_gen < 8) {
+                ++board_gen;
+                double_in_gamewise |= (1 << activate_chessboard_index_);
+                dropped_chess_group_.insert(std::make_pair(1 << activate_chessboard_index_, ChessWithPos(new_chess, pos)));
+            }
+        }
+        return;
+    }
+    if (drop_mode_ == DropMode::UNDEFINED) {
+        // do something
+        if (!exists && board_gen <= 4) {
+            drop_mode_ = DropMode::SUPERPO;
+            board_gen *= 2;
+            dropped_chess_group_.insert(std::make_pair(binary, ChessWithPos(new_chess, pos)));
+        }
+        return;
+    }
 }
 
 void ChessBoardGroup::ScrollBoard(bool reverse) {
@@ -119,40 +186,13 @@ void ChessBoardGroup::set_activate_chessboard_index(const int &activate_chessboa
 
 void ChessBoardGroup::set_drop_mode(const DropMode &drop_mode) {drop_mode_ = drop_mode;}
 
-void ChessBoardGroup::set_superpo_ratio(const std::pair<int, int> &superpo_ratio) {superpo_ratio_ = superpo_ratio;}
-
 void ChessBoardGroup::reset() {
     last_entangled_chess_ = nullptr;
     dropped_chess_group_.clear();
+    board_gen = chessboard_group_.size();
+    double_in_gamewise = 0;
+    if (drop_mode_ != DropMode::GAMEWISE) drop_mode_ = DropMode::UNDEFINED;
 }
-
-void ChessBoardGroup::ChooseChess(const point &pos) {
-    last_entangled_chess_ = dynamic_cast<QuantumChess *>(chessboard_group_[activate_chessboard_index_]->board_[pos.x()][pos.y()]);
-}
-
-void ChessBoardGroup::DropChess(BaseChess *chess) {
-    auto pos = chess->pos();
-    dropped_chess_group_.push_back(chess);
-    if (drop_mode_ == DropMode::QUANTUM && dropped_chess_group_.size() == 2) {
-        auto first_chess = dynamic_cast<QuantumChess *>(dropped_chess_group_.front());
-        auto second_chess = dynamic_cast<QuantumChess *>(dropped_chess_group_.back());
-        first_chess->set_dual(second_chess);
-        second_chess->set_dual(first_chess);
-    }
-    if (drop_mode_ == DropMode::SUPERPO && superpo_ratio_.first == static_cast<int>(dropped_chess_group_.size())) {
-        last_entangled_chess_ = last_entangled_chess_->dual();
-    }
-}
-
-//point ChessBoardGroup::BoardWeight(const int &board_index) {
-//    int m = chessboard_group_[board_index]->board_weight_;
-//    int n = 0;
-//    for (auto & board : chessboard_group_)
-//        n += board->board_weight_;
-//    std::function<int(const int &, const int &)> gcd = [&](const int &x, const int &y) { return y ? gcd(y, x % y) : 0; };
-//    int t = gcd(m, n);
-//    return point(m / t, n / t);
-//}
 
 /*
  * only called when construct the object
@@ -174,67 +214,40 @@ void ChessBoardGroup::Relax() {
                 new_board->board_weight_ += board->board_weight_;
             }
         }
-        if (!exists)
-            new_chessboard_group.push_back(board);
+        if (!exists) new_chessboard_group.push_back(board);
     }
     swap(new_chessboard_group, chessboard_group_);
-    /* get gcd of all board_weight_ */
-//    int tag = 0;
-//    for (auto board : chessboard_group_)
-//        tag |= board->board_weight_;
-//    tag = tag & -tag;
-//    group_weight_ = 0;
-//    for (auto board : chessboard_group_)
-//        group_weight_ += (board->board_weight_ /= tag);
-    group_weight_ = 0;
-    for (auto board : chessboard_group_)
-        group_weight_ += board->board_weight_;
 }
 
-void ChessBoardGroup::GroupGenerate(const ChessBoardGroup *previous_group, const TakeMode &takemode) {
+void ChessBoardGroup::GroupGenerate(const ChessBoardGroup &previous_group, const TakeMode &takemode) {
     // generate group without take any chess
-    DropMode dropmode = previous_group->drop_mode_;
-    const auto &group = previous_group->chessboard_group_;
-    const auto &dropped = previous_group->dropped_chess_group_;
-    for (auto board : group)
-        for (auto chess : dropped)
-            if (board->ChessMatch(chess)) {
-                auto new_board = new ChessBoard(*board);
-                new_board->board_weight_ *= chess->chess_weight();
-                new_board->board_[chess->pos().x()][chess->pos().y()] = chess;
-                chessboard_group_.push_back(new_board);
-            }
-    // take chess
-    if (takemode == TakeMode::NONE) return;
-    if (takemode == TakeMode::NORMAL) {
-        for (auto board : chessboard_group_) {
-            const int &size = board_size_;
-            std::vector<point> dead_chess_loc;
-            for (int i = 0; i < size; ++i)
-                for (int j = 0; j < size; ++j)
-                    if (board->ChessDead(i, j))
-                        dead_chess_loc.push_back({i, j});
-            for (auto loc : dead_chess_loc) {
-                auto chess = board->board_[loc.x()][loc.y()];
-                if (typeid(*chess) == typeid(QuantumChess)) {
-                    auto quantum_chess = dynamic_cast<QuantumChess *>(chess);
-                    auto dual = quantum_chess->dual();
-                    quantum_chess->Kill();
-                    dual->Kill();
-                }
-                board->board_[loc.x()][loc.y()] = nullptr;
-#ifdef QT_DEBUG
-                qInfo("chess has been destroyed");
-#endif
-            }
+    DropMode dropmode = previous_group.drop_mode_;
+    if (dropmode == DropMode::SUPERPO)
+        previous_group.new_chess->set_entangleable(true);
+    const auto &group = previous_group.chessboard_group_;
+    const auto &dropped = previous_group.dropped_chess_group_;
+    int board_cnt = group.size();
+    std::vector<int> weight_modifier(board_cnt);
+    for (int i = 0; i < board_cnt; ++i)
+        for (auto chess_pack : dropped)
+            weight_modifier[i] += (chess_pack.first >> i) % 2;
+
+    for (int i = 0; i < board_cnt; ++i)
+        for (auto chess_pack : dropped)
+            if ((chess_pack.first >> i) & 1) {
+            auto new_board = new ChessBoard(*group[i]);
+            new_board->board_weight_ = group[i]->board_weight_ * frac(1, weight_modifier[i]);
+            auto chess_with_pos = chess_pack.second;
+            auto pos = chess_with_pos.pos_;
+            new_board->board_[pos.x()][pos.y()] = chess_with_pos.chess_;
+            chessboard_group_.push_back(new_board);
         }
-        return;
-    }
-    if (takemode == TakeMode::DEFAULT) {
+    // take chess
+    if (takemode == TakeMode::QUANTUM) {
         const int &size = board_size_;
         int gate[10][size][size];
         memset(gate, 0, sizeof(gate));
-        std::vector<point> arr;
+        std::vector<coordinate> arr;
         for (int i = 0; i < size; ++i)
             for (int j = 0; j < size; ++j)
                 arr.push_back({i, j});
@@ -242,7 +255,7 @@ void ChessBoardGroup::GroupGenerate(const ChessBoardGroup *previous_group, const
             // find all gate
             for (auto board : chessboard_group_)
                 for (auto pos : arr)
-                    if (board->ChessDead(pos)) {
+                    if (board->Captured(pos)) {
                         if (board->board_[pos.x()][pos.y()]->player() == Player::WHITE) gate[i][pos.x()][pos.y()] |= 1;
                         if (board->board_[pos.x()][pos.y()]->player() == Player::BLACK) gate[i][pos.x()][pos.y()] |= 2;
                     }
@@ -255,19 +268,15 @@ void ChessBoardGroup::GroupGenerate(const ChessBoardGroup *previous_group, const
             for (auto board : chessboard_group_)
                 for (auto pos : arr)
                     if (gate[i][pos.x()][pos.y()] && board->board_[pos.x()][pos.y()] != nullptr
-                            && typeid(*board->board_[pos.x()][pos.y()]) == typeid(QuantumChess)) {
-                        auto quantum_chess = dynamic_cast<QuantumChess *>(board->board_[pos.x()][pos.y()]);
-                        auto dual = quantum_chess->dual();
-                        quantum_chess->Kill();
-                        dual->Kill();
-                    }
+                            && board->board_[pos.x()][pos.y()]->entangleable())
+                        board->board_[pos.x()][pos.y()]->set_entangleable(false);
             // gate effect
             for (auto pos : arr) {
                 int tag = gate[i][pos.x()][pos.y()];
                 if (tag == 0) continue;
                 if (tag == 1) {
                     // white gate
-                    BaseChess *first = nullptr;
+                    Chess *first = nullptr;
                     for (auto board : chessboard_group_)
                         if (board->board_[pos.x()][pos.y()] != nullptr && board->board_[pos.x()][pos.y()]->player() == Player::WHITE)
                             if (first == nullptr || first->id() > board->board_[pos.x()][pos.y()]->id()) first = board->board_[pos.x()][pos.y()];
@@ -280,7 +289,7 @@ void ChessBoardGroup::GroupGenerate(const ChessBoardGroup *previous_group, const
                 }
                 if (tag == 2) {
                     // black gate
-                    BaseChess *first = nullptr;
+                    Chess *first = nullptr;
                     for (auto board : chessboard_group_)
                         if (board->board_[pos.x()][pos.y()] != nullptr && board->board_[pos.x()][pos.y()]->player() == Player::BLACK)
                             if (first == nullptr || first->id() > board->board_[pos.x()][pos.y()]->id()) first = board->board_[pos.x()][pos.y()];
@@ -313,7 +322,7 @@ void ChessBoardGroup::GroupGenerate(const ChessBoardGroup *previous_group, const
 			const int &size = board_size_;
 			for (int i = 0; i < size; ++i)
 				for (int j = 0; j < size; ++j)
-                    if (board->ChessDead(i, j) && board->board_[i][j]->player() == current_player_)
+                    if (board->Captured(i, j) && board->board_[i][j]->player() == current_player_)
                         dead_chess_id.insert(board->board_[i][j]->id());
 		}
 		for (auto &board : chessboard_group_) {
@@ -329,7 +338,7 @@ void ChessBoardGroup::GroupGenerate(const ChessBoardGroup *previous_group, const
             const int &size = board_size_;
             for (int i = 0; i < size; ++i)
                 for (int j = 0; j < size; ++j)
-                    if (board->ChessDead(i, j) && board->board_[i][j]->player() != current_player_)
+                    if (board->Captured(i, j) && board->board_[i][j]->player() != current_player_)
                         dead_chess_id.insert(board->board_[i][j]->id());
         }
         for (auto &board : chessboard_group_) {

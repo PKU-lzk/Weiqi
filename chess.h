@@ -3,9 +3,8 @@
 #include "point.h"
 #include "player.h"
 
-/*
- * BaseChess class:
- *     A virtual chess class, base of the following 3 class: ClassicChess, QuantumChess, SuperpoChess
+/* Chess class:
+ *     consisting of 3 different types of chess: classic, superpo, entangle
  *
  * Objects:
  * id_:
@@ -13,84 +12,37 @@
  * pos_:
  *     the relative coordinate of the chess, from (0, 0) to (size - 1, size - 1)
  * player_:
- *     the player of the chess, WHITE or BLACK
- * chess_weight_:
- *     represents of the chance to appear, default 1
+ *     the player of the chess
+ * chess_weight:
+ *     the probability to appear, 1 or 1/2
  *
  * Methods:
  * operator QString():
- *     type conversion
+ *     id_
  */
 
-class BaseChess {
-public:
-    BaseChess(const int &id, /* relative coordinates */ const point &pos, const Player &player, const int &chess_weight);
-    virtual ~BaseChess();
-    int id() const;
-    point pos() const;
-    Player player() const;
-    int chess_weight() const;
-    explicit operator QString() const;
+enum DropMode {CLASSIC, SUPERPO, ENTANGLE, GAMEWISE, UNDEFINED};
+
+class Chess {
 private:
     int id_;
-    point pos_;
     Player player_;
-    int chess_weight_;
+    bool entangleable_;
+public:
+    Chess(const int &id, const bool &entangleable, const Player &player);
+    int id() const;
+    Player player() const;
+    bool entangleable() const;
+    void set_entangleable(const bool &entangleable);
+	explicit operator QString() const;
 };
 
-/*
- * ClassicChess class:
- *     A vanilla chess class, appears in original go games.
- */
-
-class ClassicChess : public BaseChess {
+class ChessWithPos {
 public:
-    ClassicChess(const int &id, const point &pos, const Player &player, const int &chess_weight);
-    ~ClassicChess();
-};
-
-/*
- * QuantumChess class:
- *     a new chess in this game, it split the game into 2 parts,
- *     and appears in different place in both parts
- *
- * Objects:
- * dual_:
- *     its dual chess, appears in a different chessboard and take different place
- * alive_:
- *     true if the place has never been influenced by any gate effect
- *
- * WARNING: a quantum chess is able to be entangled by a superpo chess only if it is alive
- */
-
-class QuantumChess : public BaseChess {
-public:
-    QuantumChess(const int &id, const point &pos, const Player &player, const int &chess_weight);
-    ~QuantumChess();
-    void set_dual(QuantumChess *dual);
-    bool alive() const;
-    void Kill();
-    QuantumChess *dual() const;
-private:
-    QuantumChess *dual_;
-    bool alive_;
-};
-
-/*
- * SuperpoChess class:
- *     a new chess in this game, it entangles a (pair of) chess;
- *     that is, it appears in the chessboard that its parent(a quantum chess) exists.
- *
- * WARNING: ONE SHOULD CHECK IF ITS PARENT IS ALIVE
- */
-
-class SuperpoChess : public BaseChess {
-public:
-    SuperpoChess(const int &id, const point &pos, const Player &player, const int &chess_weight, QuantumChess const *parent);
-    ~SuperpoChess();
-    QuantumChess const *parent() const;
-private:
-    QuantumChess const *parent_;
+    Chess *chess_;
+    coordinate pos_;
+    ChessWithPos(Chess *chess = nullptr, const coordinate &pos = {-1, -1});
+    bool operator<(const ChessWithPos &other) const;
 };
 
 #endif // CHESS_H

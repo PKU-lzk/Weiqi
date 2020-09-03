@@ -36,7 +36,7 @@ class Game
 public:
     Game(GameWindow *parent, const int &board_size, const TakeMode &takemode);
     ~Game();
-    void Click(const point &pos);
+    void Click(const coordinate &pos, const bool &right);
     bool FinishRound();
     void PrevRound();
     void NextRound();
@@ -47,7 +47,7 @@ private:
     int current_round_id_;
     Player current_round_player_;
     std::vector<ChessBoardGroup *> round_;
-    std::vector<BaseChess *> chessgroup_;
+    std::vector<Chess *> chessgroup_;
     friend class GameWindow;
 };
 

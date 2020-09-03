@@ -16,58 +16,25 @@ Game::~Game() {
     chessgroup_.clear();
 }
 
-void Game::Click(const point &pos) {
-    const int &id = current_round_id_;
-    const Player &player = current_round_player_;
-    auto round = round_[id];
-    if (round->drop_mode_ == DropMode::CLASSIC) {
-        if (round->ValidDrop(pos)) {
-            BaseChess * chess = new ClassicChess(id + 1, pos, player, 1);
-            chessgroup_.push_back(chess);
-            round->DropChess(chess);
-            return;
-        }
+void Game::Click(const coordinate &pos, const bool &right) {
+    auto round = round_[current_round_id_];
+    if (right)
+        round->RPress(pos);
+    else {
+        round->LPress(pos);
+//        if (FinishRound())
+//            NextRound();
     }
-    if (round->drop_mode_ == DropMode::QUANTUM) {
-        if (round->ValidDrop(pos)) {
-            BaseChess *chess = new QuantumChess(id + 1, pos, player, 1);
-            chessgroup_.push_back(chess);
-            round->DropChess(chess);
-            return;
-        } else if (round->ValidChoose(pos)) {
-            round->ChooseChess(pos);
-            return;
-        }
-    }
-    if (round->drop_mode_ == DropMode::SUPERPO) {
-        if (round->ValidDrop(pos)) {
-            auto ratio = round->superpo_ratio_;
-            auto parent = round->last_entangled_chess_;
-            int weight = static_cast<int>(round->dropped_chess_group_.size()) < ratio.first ? ratio.second : ratio.first;
-            BaseChess *chess = new SuperpoChess(id + 1, pos, player, weight, parent);
-            chessgroup_.push_back(chess);
-            round->DropChess(chess);
-            return;
-        } else if (round->ValidChoose(pos)) {
-            auto board = round->chessboard_group_[round->activate_chessboard_index_];
-            auto chess = board->board_[pos.x()][pos.y()];
-            round->last_entangled_chess_ = dynamic_cast<QuantumChess *>(chess);
-        }
-    }
-    qInfo("unknown error");
-    return;
 }
 
 bool Game::FinishRound() {
     auto round = round_[current_round_id_];
-    if (round->drop_mode_ == DropMode::CLASSIC)
-        return round->dropped_chess_group_.size() == 1;
-    if (round->drop_mode_ == DropMode::QUANTUM)
-        return round->dropped_chess_group_.size() == 2;
-    if (round->drop_mode_ == DropMode::SUPERPO)
-        return static_cast<int>(round->dropped_chess_group_.size()) == round->superpo_ratio_.first + round->superpo_ratio_.second;
-    qInfo("known error");
-    return false;
+    int current_board_gen = 0;
+    for (auto dropped : round->dropped_chess_group_)
+        for (int i = 0; i < 8; ++i) if ((dropped.first >> i) & 1) ++current_board_gen;
+    qDebug() << "current_board_gen" << current_board_gen;
+    qDebug() << "round->board_gen" << round->board_gen;
+    return current_board_gen == round->board_gen;
 }
 
 void Game::PrevRound() {
@@ -81,7 +48,7 @@ void Game::PrevRound() {
 }
 
 void Game::NextRound() {
-    round_.push_back(new ChessBoardGroup(round_.back(), takemode_));
+    round_.push_back(new ChessBoardGroup(*round_.back(), takemode_));
     ++current_round_id_;
     if (current_round_player_ == Player::WHITE)
         current_round_player_ = Player::BLACK;
